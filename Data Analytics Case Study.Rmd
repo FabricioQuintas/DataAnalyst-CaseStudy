@@ -1,0 +1,202 @@
+---
+title: "Data Analytics Case Study"
+author: "Fabricio"
+date: '2022-05-23'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+## Scenario
+
+You are a junior data analyst working in the marketing analyst team at Cyclistic, a bike-share company in Chicago. The director
+of marketing believes the company’s future success depends on maximizing the number of annual memberships. Therefore,
+your team wants to understand how casual riders and annual members use Cyclistic bikes differently. From these insights,
+your team will design a new marketing strategy to convert casual riders into annual members. But first, Cyclistic executives
+must approve your recommendations, so they must be backed up with compelling data insights and professional data
+visualizations
+
+#### Characters and teams
+
+* Cyclistic: A bike-share program that features more than 5,800 bicycles and 600 docking stations. Cyclistic sets itself
+apart by also offering reclining bikes, hand tricycles, and cargo bikes, making bike-share more inclusive to people with
+disabilities and riders who can’t use a standard two-wheeled bike. The majority of riders opt for traditional bikes; about
+8% of riders use the assistive options. Cyclistic users are more likely to ride for leisure, but about 30% use them to
+commute to work each day.
+* Lily Moreno: The director of marketing and your manager. Moreno is responsible for the development of campaigns
+and initiatives to promote the bike-share program. These may include email, social media, and other channels.
+* Cyclistic marketing analytics team: A team of data analysts who are responsible for collecting, analyzing, and
+reporting data that helps guide Cyclistic marketing strategy. You joined this team six months ago and have been busy
+learning about Cyclistic’s mission and business goals — as well as how you, as a junior data analyst, can help Cyclistic
+achieve them.
+* Cyclistic executive team: The notoriously detail-oriented executive team will decide whether to approve the
+recommended marketing program.
+
+## About the Company
+
+In 2016, Cyclistic launched a successful bike-share offering. Since then, the program has grown to a fleet of 5,824 bicycles that
+are geotracked and locked into a network of 692 stations across Chicago. The bikes can be unlocked from one station and
+returned to any other station in the system anytime.
+Until now, Cyclistic’s marketing strategy relied on building general awareness and appealing to broad consumer segments.
+One approach that helped make these things possible was the flexibility of its pricing plans: single-ride passes, full-day passes,
+and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual riders. Customers
+who purchase annual memberships are Cyclistic members.
+Cyclistic’s finance analysts have concluded that annual members are much more profitable than casual riders. Although the
+pricing flexibility helps Cyclistic attract more customers, Moreno believes that maximizing the number of annual members will
+be key to future growth. Rather than creating a marketing campaign that targets all-new customers, Moreno believes there is a
+very good chance to convert casual riders into members. She notes that casual riders are already aware of the Cyclistic
+program and have chosen Cyclistic for their mobility needs.
+Moreno has set a clear goal: Design marketing strategies aimed at converting casual riders into annual members. In order to
+do that, however, the marketing analyst team needs to better understand how annual members and casual riders differ, why
+casual riders would buy a membership, and how digital media could affect their marketing tactics. Moreno and her team are
+interested in analyzing the Cyclistic historical bike trip data to identify trends.
+
+#### For this Case, i will make the 6 steps of Data Analytics : ASK - PREPARE - PROCESS - ANALYZE - SHARE - ACT
+
+
+Due to financial analysis done, we know that is more profitable a annual member suscriptor than a casual one, then we must determine how each one uses the service and the way to make casuals buy the anual membership.
+
+
+  I will use the Cyclistic's historical trip data, taken from [here](https://divvy-tripdata.s3.amazonaws.com/index.html), the data is organized monthly and was collected directly from the customers. I'll take for this case, data from June 2021, to May 2022 under this [licence](https://ride.divvybikes.com/data-license-agreement).
+  There is no personal information about the customers, and the integrity of the data was given by DIVVY service. This analysis will help to get certain data about customers, and how they use the service given, with this information we can arrive data decisions that will improve our gains.
+
+For the process, that its a huge amount of data on the last 12 months, i'll use R to clean and navegate throught it
+| First, lets install and load the required packages.
+
+```{r include=FALSE}
+install.packages("dplyr", repos = 'https://cran.r-project.org')
+install.packages("readr", repos = 'https://cran.r-project.org')
+install.packages("lubridate", repos = 'https://cran.r-project.org')
+install.packages("ggplot2", repos = 'https://cran.r-project.org')
+install.packages("scales", repos = 'https://cran.r-project.org')
+library("dplyr")
+library("readr")
+library("lubridate")
+library("ggplot2")
+library("scales")
+```
+
+```{r/}
+install.packages("dplyr", repos = 'https://cran.r-project.org')
+install.packages("readr", repos = 'https://cran.r-project.org')
+install.packages("lubridate", repos = 'https://cran.r-project.org')
+install.packages("ggplot2", repos = 'https://cran.r-project.org')
+install.packages("scales", repos = 'https://cran.r-project.org')
+library("dplyr")
+library("readr")
+library("lubridate")
+library("ggplot2")
+library("scales")
+```
+
+| Then, merge all files.csv (12 total) that are currently on a folder named "CaseStudy1"
+
+```{r message = FALSE}
+datatrip <- list.files(path='C:/Users/fabri/Documents/CaseStudy1', pattern = "*.csv", full.names = TRUE) %>% 
+  lapply(read_csv) %>% 
+  bind_rows 
+```
+
+| Check columns names
+
+```{r}
+colnames(datatrip)
+```
+
+| Delete all duplicates by ride_id
+
+```{r}
+datatrip %>% distinct(ride_id, .keep_all = TRUE)
+```
+
+| Calculate the time of each ride, delete negative values and create a new variable with each week day.
+
+```{r}
+datatrip <- datatrip %>% 
+  mutate(riding_time = as.numeric((ended_at - started_at)/60))
+subset(datatrip, riding_time<0)
+datatrip$day_of_week <- wday(datatrip$started_at, label=TRUE, abbr=FALSE)
+```
+
+| Perfect, at this point we already merge all files required, delete duplicates by ride_id and created an value for ride duration and day of week
+| Now, lets see how many rides did each type of user, and the preference of bike of them
+
+```{r}
+members_count <- datatrip %>% 
+  count(member_casual, rideable_type)
+members_count %>% 
+  ggplot(aes(member_casual, n, fill = rideable_type)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Quantity of members, with bike preference",
+    subtitle = "Data from June 2021 to May 2022",
+    fill = "Bike type",
+    x = "User type",
+    y = "Number of users" ) +
+  geom_text(
+    aes(label = n), 
+    position = position_stack(vjust = .5)) +
+  scale_y_continuous(labels = label_number(suffix= "M", scale = 1e-6)) +
+  annotate("text", x = 1, y = -80000, label = "Total = 2.536.358") +
+  annotate("text", x = 2, y = -80000, label = "Total = 3.221.193")
+```
+
+| Let see the average of rides for each group (members/casuals)
+
+```{r}
+datatrip %>%
+  group_by(member_casual) %>%
+  summarise_at(vars(riding_time), list(name = mean))
+```
+  
+| With this graph, we can check the quantity of rides per day, separated by group
+
+```{r}
+day_week_result <- datatrip %>% 
+  count(member_casual, day_of_week, rideable_type)
+
+day_week_result %>% 
+  ggplot(aes(day_of_week, n, fill = rideable_type)) +
+  facet_wrap(~member_casual) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Quantity of rides per day",
+    subtitle = "Data from June 2021 to May 2022",
+    fill = "Bike type",
+    x = "Week day",
+    y = "Number of Rides" ) +
+  scale_y_continuous(labels = comma)+
+  theme(axis.text.x=element_text(angle = 90))
+```
+
+| At this point we have certain values that we can analize:
+  *- We know that:
+        - Total Users = 5.757.551
+              | Casual Users : 2.536.358
+              | Member Users : 3.221.193
+        - Rides per user type
+        - Bike preference
+  *- Also seems that many starting and ending points didn't 
+        
+#### We can take some observations
+      - Total data collected : 5.757.551 rows
+      - The population of the annual members is higher than casuals, with a 55.95% total.
+      - As an average of 12 months, annual members do their journeys most at weekdays, with this data we can say that they use the service to commute to their work.
+      - Casual journeys pump on weekend days, this is because they use for recreational activities.
+      - Casual users makes a higher riding time in average.
+      
+### Conclusions
+  
+  * Slightly increase prices on weekend days for casual users, this can cause that them opt to buy a membership
+  * Split the membership in 3, between weekend days, week days and both
+
+
+### At last
+
+   * I'll continue updating this until its completely done.
+        - Uploaded at 5/25/2022
